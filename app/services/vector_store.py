@@ -1,5 +1,6 @@
 from uuid import uuid4
 from typing import List
+from collections import defaultdict
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -7,6 +8,9 @@ from qdrant_client.models import (
     Distance,
     PointStruct,
     VectorParams,
+    Filter,
+    FieldCondition,
+    MatchValue,
 )
 
 from app.core.config import settings
@@ -163,3 +167,71 @@ class VectorStore:
 
             logger.exception("Qdrant unavailable.")
             return False
+
+    def list_documents(self) -> List[dict]:
+        """
+        List all unique documents with their chunk counts.
+        """
+        try:
+            # Scroll through all points to get document metadata
+            documents = defaultdict(lambda: {"chunks": 0, "size": 0})
+            
+            offset = None
+            while True:
+                response = self.client.scroll(
+                    collection_name=self.collection_name,
+                    limit=100,
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                points, offset = response
+                
+                for point in points:
+                    if point.payload and "source_file" in point.payload:
+                        filename = point.payload["source_file"]
+                        documents[filename]["chunks"] += 1
+                        if "text" in point.payload:
+                            documents[filename]["size"] += len(point.payload["text"])
+                
+                if offset is None:
+                    break
+            
+            return [
+                {
+                    "filename": filename,
+                    "chunks": info["chunks"],
+                    "size": info["size"],
+                }
+                for filename, info in documents.items()
+            ]
+        except Exception as exc:
+            logger.exception("Failed to list documents.")
+            raise VectorStoreException(f"Failed to list documents: {exc}") from exc
+
+    def delete_by_source_file(self, filename: str) -> int:
+        """
+        Delete all vectors for a specific source file.
+        Returns the number of deleted points.
+        """
+        try:
+            filter_condition = Filter(
+                must=[
+                    FieldCondition(
+                        key="source_file",
+                        match=MatchValue(value=filename),
+                    )
+                ]
+            )
+            
+            result = self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=filter_condition,
+                wait=True,
+            )
+            
+            logger.info(f"Deleted {result.operation_id} points for {filename}")
+            return result.operation_id or 0
+        except Exception as exc:
+            logger.exception(f"Failed to delete document {filename}.")
+            raise VectorStoreException(f"Failed to delete document: {exc}") from exc
