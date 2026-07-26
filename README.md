@@ -1,38 +1,131 @@
 # Enterprise Multimodal RAG Pipeline
 
-An enterprise-grade, 100% local, and containerized Retrieval-Augmented Generation (RAG) pipeline designed for zero-cost ($0) operation, strict data privacy, and production-scale data engineering orchestration. This architecture leverages Semantic Chunking, Hybrid Search, and a Two-Stage Cross-Encoder Reranking pipeline to deliver highly accurate context to a local LLM without external API dependencies or cloud data leakage.
+A production-grade, 100% local Retrieval-Augmented Generation (RAG) pipeline with semantic chunking, hybrid retrieval, and cross-encoder reranking. Zero cloud dependencies, zero API costs.
 
-## System Architecture:
-![image alt]()
+## Architecture
 
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Upload    │────▶│  Ingestion   │────▶│   Qdrant    │
+│  (PDF/TXT/  │     │  Pipeline    │     │  Vector DB  │
+│    MD)      │     │              │     │  (HNSW)     │
+└─────────────┘     └──────────────┘     └─────────────┘
+                           │                    │
+                           ▼                    ▼
+                    ┌──────────────┐     ┌─────────────┐
+                    │  Embedding   │     │  Retrieval  │
+                    │  (MiniLM)    │     │  (Dense +   │
+                    └──────────────┘     │   Sparse)   │
+                                         └──────┬──────┘
+                                                │
+                           ┌──────────────┐     ▼
+                           │   Ollama (phi3:mini) │◀───┘
+                           └──────────────┘
+```
 
-## Key Features
-1. Adaptive Semantic Chunking
-Instead of splitting text using arbitrary character counts which break sentences in half, this system evaluates the semantic distance between consecutive sentences. A chunk boundary is dynamically injected only when the cosine distance exceeds the 95th percentile threshold of the document context, maintaining strict semantic boundaries.
+## Features
 
-2. High-Performance Vector Storage
-Utilizes a containerized Qdrant instance running Hierarchical Navigable Small World (HNSW) graphs. Vectors are stored alongside production-grade metadata payloads (source_file, chunk_id, timestamp) allowing for granular data lineage and partitioned lookups.
+- **Semantic Chunking**: Recursive character splitting with configurable overlap
+- **Hybrid Retrieval**: Dense (cosine) + Sparse (BM25) via Qdrant
+- **Cross-Encoder Reranking**: BAAI/bge-reranker-large for precision
+- **100% Local**: Ollama for LLM, SentenceTransformers for embeddings
+- **Production Ready**: Docker Compose, health checks, structured logging
 
-3. Two-Stage Hybrid Retrieval & Reranking
-To prevent the common "Lost in the Middle" phenomenon found in LLMs, retrieval operates on a dual-track architecture:
+## Quick Start
 
-Dense Search: Identifies abstract concepts using Cosine Similarity.
+### Prerequisites
+- Docker & Docker Compose
+- 4GB+ RAM (for phi3:mini)
 
-Sparse Search: Evaluates strict domain-specific keywords and identifiers using the BM25 algorithm.
+### Run with Docker Compose
+```bash
+git clone <repo>
+cd Enterprise-Multimodal-RAG-Pipeline-production_grade
+docker compose up -d
+```
 
-Results are combined via Reciprocal Rank Fusion (RRF)
+Services:
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Qdrant**: http://localhost:6333
+- **Ollama**: http://localhost:11434
 
-The top 25 merged results are filtered down to the top 5 highly specific chunks using the BAAI/bge-reranker-large Cross-Encoder model, cutting LLM context noise and optimizing processing speed.
+### Frontend (Optional)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend runs at http://localhost:5173 (proxies API to backend)
 
-## Tech Stack and Dependencies:
-**Service Layer:** FastAPI, Uvicorn
+## API Endpoints
 
-**Vector Infrastructure:** Qdrant DB (Containerized)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/health` | System health check |
+| POST | `/api/v1/upload` | Upload & index document |
+| GET | `/api/v1/documents` | List indexed documents |
+| DELETE | `/api/v1/documents/{filename}` | Delete document |
+| POST | `/api/v1/chat` | Ask question (RAG) |
 
-**Local LLM Host:** Ollama (llama3 engine)
+### Example Usage
+```bash
+# Upload document
+curl -X POST http://localhost:8000/api/v1/upload \
+  -F "file=@document.pdf"
 
-**Embedding Pipeline:** Sentence-Transformers (all-MiniLM-L6-v2)
+# List documents
+curl http://localhost:8000/api/v1/documents
 
-**Orchestration & DevOps:** Docker, Docker Compose
+# Ask question
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the main topic?"}'
+```
 
-**Data Processing:** PyPDF, LangChain Text Splitters
+## Configuration
+
+Environment variables (`.env`):
+```bash
+APP_NAME=VectorMind
+APP_VERSION=2.0.0
+ENVIRONMENT=development
+
+OLLAMA_BASE_URL=http://localhost:11434
+LLM_MODEL=phi3:mini
+
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| API | FastAPI, Uvicorn |
+| Vector DB | Qdrant (HNSW) |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
+| LLM | Ollama (phi3:mini) |
+| Chunking | LangChain RecursiveCharacterTextSplitter |
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Orchestration | Docker Compose |
+
+## Project Structure
+
+```
+├── app/
+│   ├── api/           # FastAPI routes
+│   ├── core/          # Config, exceptions, logging
+│   ├── schemas/       # Pydantic models
+│   └── services/      # Business logic
+├── frontend/          # React + Vite + Tailwind
+├── docker-compose.yml
+├── Dockerfile
+└── requirements.txt
+```
+
+## License
+
+MIT
