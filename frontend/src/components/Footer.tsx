@@ -1,6 +1,5 @@
-import { cn } from '../lib/utils'
-import { Github, Linkedin, Twitter, BookOpen, Terminal, Database, Zap } from 'lucide-react'
-import type { HealthResponse } from '../types'
+import { Terminal, Database, Zap, BookOpen, GitFork, User, X } from 'lucide-react'
+import type { HealthResponse } from '../types/api'
 
 interface FooterProps {
   health: HealthResponse | null
@@ -62,13 +61,13 @@ export function Footer({ health }: FooterProps) {
             <h4 className="font-semibold text-foreground mb-3">Connect</h4>
             <div className="flex gap-3">
               <a href="https://github.com/singh-rounak" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                <Github className="w-5 h-5" />
+                <GitFork className="w-5 h-5" />
               </a>
               <a href="https://linkedin.com/in/singh-rounak" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                <Linkedin className="w-5 h-5" />
+                <User className="w-5 h-5" />
               </a>
-              <a href="https://twitter.com/singh_rounak" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                <Twitter className="w-5 h-5" />
+              <a href="https://x.com/singh_rounak" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                <X className="w-5 h-5" />
               </a>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { cn } from '../lib/utils'
-import { Brain, Database, Server, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
-import type { HealthResponse } from '../types'
+import { Brain, Database, Server, CheckCircle, AlertTriangle } from 'lucide-react'
+import type { HealthResponse } from '../types/api'
 
 interface HeaderProps {
   health: HealthResponse | null
@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export function Header({ health, activeTab, setActiveTab }: HeaderProps) {
   const statusColor = health?.status === 'ok' ? 'text-green-500' : 'text-yellow-500'
-  const statusIcon = health?.status === 'ok' ? CheckCircle : AlertTriangle
+  const StatusIcon = health?.status === 'ok' ? CheckCircle : AlertTriangle
 
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
@@ -57,7 +57,7 @@ export function Header({ health, activeTab, setActiveTab }: HeaderProps) {
 
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-xs font-medium">
-              <statusIcon className={cn('w-3 h-3', statusColor)} />
+              <StatusIcon className={cn('w-3 h-3', statusColor)} />
               <span className={cn(statusColor)}>
                 {health?.status === 'ok' ? 'System Healthy' : 'Degraded'}
               </span>

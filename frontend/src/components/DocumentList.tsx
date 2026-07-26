@@ -4,12 +4,9 @@ import {
   Database, 
   Trash2, 
   Loader2, 
-  Eye, 
-  Download,
   Sparkles,
-  AlertCircle 
 } from 'lucide-react'
-import { cn, formatFileSize, formatDate } from '../lib/utils'
+import { formatFileSize, formatDate } from '../lib/utils'
 import { DocumentUploader } from './DocumentUploader'
 import { getDocuments, deleteDocument } from '../api'
 
@@ -158,20 +155,6 @@ function DocumentRow({ doc, onDelete, deleting }: DocumentRowProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-            aria-label="View document"
-            disabled
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-            aria-label="Download document"
-            disabled
-          >
-            <Download className="w-4 h-4" />
-          </button>
           <button
             onClick={() => onDelete(doc.filename)}
             disabled={deleting}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { Upload, FileText, CheckCircle, XCircle, Loader2, AlertCircle, FileType } from 'lucide-react'
 import { cn, formatFileSize } from '../lib/utils'
 import { uploadDocument, type UploadResponse } from '../api'

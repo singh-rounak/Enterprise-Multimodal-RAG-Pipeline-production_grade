@@ -1,8 +1,8 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 import { cn } from '../lib/utils'
 import { Send, Bot, MessageSquare, Loader2, Copy, AlertCircle, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ChatResponse } from '../types'
+import type { ChatResponse } from '../types/api'
 
 interface Message {
   id: string

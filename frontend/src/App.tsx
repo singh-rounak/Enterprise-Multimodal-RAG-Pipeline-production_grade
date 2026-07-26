@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react'
-import { UploadArea } from './components/UploadArea'
 import { ChatInterface } from './components/ChatInterface'
 import { DocumentList } from './components/DocumentList'
-import { HealthIndicator } from './components/HealthIndicator'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
-import { ToastProvider } from './components/Toast'
+import { ToastProvider, Toaster } from './components/Toast'
 import { api } from './lib/api'
-import type { Document, HealthResponse } from './types'
+import type { Document, HealthResponse } from './types/api'
 
 function App() {
-  const [documents, setDocuments] = useState<Document[]>([])
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'chat' | 'documents'>('chat')
@@ -24,44 +21,9 @@ function App() {
     }
   }
 
-  const fetchDocuments = async () => {
-    try {
-      const res = await api.get<Document[]>('/documents')
-      setDocuments(res.data)
-    } catch {
-      setDocuments([])
-    }
-  }
-
-  const handleUpload = async (file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    try {
-      await api.post('/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      toast.success('Document uploaded and indexed successfully')
-      await fetchDocuments()
-      await fetchHealth()
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Upload failed')
-    }
-  }
-
-  const handleDeleteDocument = async (filename: string) => {
-    try {
-      await api.delete(`/documents/${filename}`)
-      toast.success('Document deleted')
-      await fetchDocuments()
-      await fetchHealth()
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Delete failed')
-    }
-  }
-
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchHealth(), fetchDocuments()])
+      await fetchHealth()
       setIsLoading(false)
     }
     init()
@@ -87,18 +49,14 @@ function App() {
         
         <main className="flex-1 flex flex-col max-w-6xl w-full mx-auto px-4 py-8">
           {activeTab === 'chat' ? (
-            <ChatInterface onDocumentsChange={fetchDocuments} />
+            <ChatInterface />
           ) : (
-            <DocumentList 
-              documents={documents} 
-              onUpload={handleUpload}
-              onDelete={handleDeleteDocument}
-              health={health}
-            />
+            <DocumentList />
           )}
         </main>
 
         <Footer health={health} />
+        <Toaster position="bottom-right" />
       </div>
     </ToastProvider>
   )

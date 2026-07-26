@@ -1,6 +1,6 @@
 import { cn, getStatusColor } from '../lib/utils'
-import { CheckCircle, AlertTriangle, Database, Server, Cpu, HardDrive } from 'lucide-react'
-import type { HealthResponse } from '../types'
+import { CheckCircle, AlertTriangle, Database, Server, Cpu } from 'lucide-react'
+import type { HealthResponse } from '../types/api'
 
 interface HealthIndicatorProps {
   health: HealthResponse | null

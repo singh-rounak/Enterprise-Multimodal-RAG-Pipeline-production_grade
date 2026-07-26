@@ -1,5 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react'
-import { cn } from '../lib/utils'
+import { useState, createContext, useContext, type ReactNode } from 'react'
 import { CheckCircle, AlertCircle, XCircle, Loader2 } from 'lucide-react'
 
 interface Toast {
@@ -31,16 +30,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return id
   }
 
-  const toast = {
+  const value = {
+    toasts,
+    dismissToast,
     success: (message: string) => addToast(message, 'success'),
     error: (message: string) => addToast(message, 'error'),
     info: (message: string) => addToast(message, 'info'),
     loading: (message: string) => addToast(message, 'loading'),
-    dismiss: dismissToast,
   }
 
   return (
-    <ToastContext.Provider value={{ toasts, dismissToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <Toaster toasts={toasts} onDismiss={dismissToast} />
     </ToastContext.Provider>
@@ -55,7 +55,7 @@ export function useToast() {
   return context
 }
 
-function Toaster({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
+export function Toaster({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
       {toasts.map((t) => (
@@ -74,12 +74,7 @@ function Toast({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => 
   }
 
   return (
-    <div
-      className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[280px] max-w-md animate-slide-up',
-        'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
-      )}
-    >
+    <div className="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[280px] max-w-md animate-slide-up bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       {icons[toast.type]}
       <p className="flex-1 text-sm text-gray-900 dark:text-gray-100">{toast.message}</p>
       <button
