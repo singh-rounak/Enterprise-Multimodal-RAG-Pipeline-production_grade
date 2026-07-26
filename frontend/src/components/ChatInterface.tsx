@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { cn } from '../lib/utils'
 import { Send, Bot, MessageSquare, Loader2, Copy, AlertCircle, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
@@ -11,21 +11,13 @@ interface Message {
   timestamp: Date
 }
 
-interface ChatInterfaceProps {
-  onDocumentsChange?: () => void
-}
-
-export const ChatInterface = forwardRef<HTMLDivElement, ChatInterfaceProps>(({ onDocumentsChange }, ref) => {
+export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  useImperativeHandle(ref, () => ({
-    focus: () => textareaRef.current?.focus(),
-  }))
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -52,6 +44,11 @@ export const ChatInterface = forwardRef<HTMLDivElement, ChatInterfaceProps>(({ o
     setLoading(true)
     setError(null)
 
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
+
     try {
       const response = await api.post<ChatResponse>('/chat', { question })
       
@@ -70,16 +67,11 @@ export const ChatInterface = forwardRef<HTMLDivElement, ChatInterfaceProps>(({ o
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e)
     }
-  }
-
-  const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    e.target.style.height = 'auto'
-    e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px'
   }
 
   const copyToClipboard = (text: string) => {
@@ -190,9 +182,12 @@ export const ChatInterface = forwardRef<HTMLDivElement, ChatInterfaceProps>(({ o
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value)
+              e.target.style.height = 'auto'
+              e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px'
+            }}
             onKeyDown={handleKeyDown}
-            onInput={autoResize}
             placeholder="Ask a question about your documents..."
             className="w-full min-h-[48px] max-h-[150px] px-4 py-3 pr-12 bg-muted border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
             disabled={loading}
@@ -220,12 +215,10 @@ export const ChatInterface = forwardRef<HTMLDivElement, ChatInterfaceProps>(({ o
           </button>
         </div>
         <p className="text-xs text-muted-foreground text-center mt-2">
-          Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">Enter</kbd> to send •
+          Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">Enter</kbd> to send &nbsp;•&nbsp;
           <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">Shift+Enter</kbd> for new line
         </p>
       </form>
     </div>
   )
-})
-
-ChatInterface.displayName = 'ChatInterface'
+}

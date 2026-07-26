@@ -3,9 +3,9 @@ import { ChatInterface } from './components/ChatInterface'
 import { DocumentList } from './components/DocumentList'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
-import { ToastProvider, Toaster } from './components/Toast'
+import { ToastProvider } from './components/Toast'
 import { api } from './lib/api'
-import type { Document, HealthResponse } from './types/api'
+import type { HealthResponse } from './types/api'
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null)
@@ -56,7 +56,6 @@ function App() {
         </main>
 
         <Footer health={health} />
-        <Toaster position="bottom-right" />
       </div>
     </ToastProvider>
   )
