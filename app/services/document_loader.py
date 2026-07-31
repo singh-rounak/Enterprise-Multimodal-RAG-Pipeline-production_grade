@@ -93,9 +93,9 @@ class DocumentLoader:
             "filename": file_path.name,
             "extension": ".pdf",
             "text": full_text,
+            "pages": pages,
             "metadata": {
-                "pages": len(pages),
-                "page_details": pages,
+                "pages_count": len(pages),
             },
         }
 
@@ -116,7 +116,8 @@ class DocumentLoader:
             "filename": file_path.name,
             "extension": ".txt",
             "text": text,
-            "metadata": {},
+            "pages": [{"page": 1, "text": text}],
+            "metadata": {"pages_count": 1},
         }
 
     # -------------------------------------------------------
@@ -136,5 +137,6 @@ class DocumentLoader:
             "filename": file_path.name,
             "extension": ".md",
             "text": text,
-            "metadata": {},
+            "pages": [{"page": 1, "text": text}],
+            "metadata": {"pages_count": 1},
         }

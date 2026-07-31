@@ -1,3 +1,11 @@
+export interface Citation {
+  source_file: string
+  page?: number
+  chunk_index?: number
+  score: number
+  snippet: string
+}
+
 export interface UploadResponse {
   message: string
   chunks: number
@@ -20,4 +28,5 @@ export interface Document {
 
 export interface ChatResponse {
   answer: string
+  citations?: Citation[]
 }

@@ -1,6 +1,6 @@
-import type { UploadResponse, HealthResponse, Document, ChatResponse } from './types/api'
+import type { UploadResponse, HealthResponse, Document, ChatResponse, Citation } from './types/api'
 
-export type { UploadResponse, HealthResponse, Document, ChatResponse }
+export type { UploadResponse, HealthResponse, Document, ChatResponse, Citation }
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
@@ -81,6 +81,68 @@ export async function chat(question: string): Promise<ChatResponse> {
     method: 'POST',
     body: JSON.stringify({ question }),
   })
+}
+
+export async function streamChat(
+  question: string,
+  callbacks: {
+    onCitations?: (citations: Citation[]) => void
+    onToken?: (token: string) => void
+    onDone?: () => void
+    onError?: (err: Error) => void
+  }
+): Promise<void> {
+  const url = `${API_BASE}/chat/stream`
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Streaming failed (${response.status})`)
+    }
+
+    if (!response.body) {
+      throw new Error('ReadableStream not supported on response.')
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('data: ')) {
+          const jsonStr = trimmed.slice(6)
+          try {
+            const data = JSON.parse(jsonStr)
+            if (data.event === 'citations' && callbacks.onCitations) {
+              callbacks.onCitations(data.citations)
+            } else if (data.event === 'token' && callbacks.onToken) {
+              callbacks.onToken(data.content)
+            } else if (data.event === 'done' && callbacks.onDone) {
+              callbacks.onDone()
+            }
+          } catch (e) {
+            console.error('Failed to parse SSE payload', e)
+          }
+        }
+      }
+    }
+    if (callbacks.onDone) callbacks.onDone()
+  } catch (err: any) {
+    if (callbacks.onError) callbacks.onError(err)
+  }
 }
 
 export async function getDocuments(): Promise<Document[]> {

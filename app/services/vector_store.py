@@ -116,9 +116,19 @@ class VectorStore:
         limit: int = None,
     ) -> List[str]:
         """
-        Search similar document chunks.
+        Search similar document chunks (returns text strings).
         """
+        hits = self.search_with_metadata(embedding, limit=limit)
+        return [hit["text"] for hit in hits]
 
+    def search_with_metadata(
+        self,
+        embedding: List[float],
+        limit: int = None,
+    ) -> List[dict]:
+        """
+        Search similar document chunks and return full metadata + similarity score.
+        """
         if limit is None:
             limit = settings.retrieval_top_k
 
@@ -133,11 +143,18 @@ class VectorStore:
             logger.exception("Vector search failed.")
             raise VectorStoreException(f"Vector search failed: {exc}") from exc
 
-        return [
-            hit.payload["text"]
-            for hit in response.points
-            if hit.payload and "text" in hit.payload
-        ]
+        results = []
+        for hit in response.points:
+            if hit.payload and "text" in hit.payload:
+                results.append({
+                    "text": hit.payload["text"],
+                    "source_file": hit.payload.get("source_file", "Unknown"),
+                    "page": hit.payload.get("page", 1),
+                    "chunk_index": hit.payload.get("chunk_index", 0),
+                    "score": round(float(hit.score), 4) if hasattr(hit, "score") and hit.score is not None else 0.0,
+                })
+        return results
+
 
     def delete_all(self):
         """

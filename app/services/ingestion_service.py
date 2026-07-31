@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import asyncio
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -15,7 +14,7 @@ from app.services.vector_store import VectorStore
 
 class IngestionService:
     """
-    Orchestrates the document ingestion pipeline:
+    Orchestrates the document ingestion pipeline asynchronously:
 
         raw upload -> DocumentLoader -> ChunkingService
                    -> EmbeddingService -> VectorStore
@@ -36,12 +35,57 @@ class IngestionService:
         self.upload_dir = Path(settings.upload_dir)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
+    def _process_file_sync(self, upload_path: Path, filename: str):
+        """Synchronous CPU worker run in thread pool."""
+        try:
+            document = self.document_loader.load(upload_path)
+        except ValueError as exc:
+            raise DocumentProcessingException(str(exc)) from exc
+
+        pages = document.get("pages", [])
+        all_chunks = []
+        all_metadata = []
+        global_chunk_idx = 0
+
+        if pages:
+            for page_item in pages:
+                page_num = page_item.get("page", 1)
+                page_text = page_item.get("text", "")
+                if not page_text.strip():
+                    continue
+
+                page_chunks = self.chunking_service.recursive_chunk(page_text)
+                for chunk in page_chunks:
+                    all_chunks.append(chunk)
+                    all_metadata.append({
+                        "source_file": filename,
+                        "page": page_num,
+                        "chunk_index": global_chunk_idx,
+                    })
+                    global_chunk_idx += 1
+        else:
+            text = document.get("text", "")
+            if not text.strip():
+                raise DocumentProcessingException(f"No extractable text found in {filename}.")
+            chunks = self.chunking_service.recursive_chunk(text)
+            for idx, chunk in enumerate(chunks):
+                all_chunks.append(chunk)
+                all_metadata.append({
+                    "source_file": filename,
+                    "page": 1,
+                    "chunk_index": idx,
+                })
+
+        if not all_chunks:
+            raise DocumentProcessingException(f"Chunking produced no chunks for {filename}.")
+
+        embeddings = self.embedding_service.embed_documents(all_chunks)
+        self.vector_store.upsert(all_chunks, embeddings, all_metadata)
+        return len(all_chunks)
+
     async def ingest(self, file: UploadFile) -> int:
         """
-        Saves the uploaded file to disk, extracts its text, chunks it,
-        embeds the chunks, and stores them in the vector store.
-
-        Returns the number of chunks indexed.
+        Saves the uploaded file to disk and offloads parsing & embedding to a background thread.
         """
 
         if not file.filename:
@@ -56,7 +100,6 @@ class IngestionService:
             )
 
         upload_path = self.upload_dir / file.filename
-
         content = await file.read()
 
         if not content:
@@ -73,37 +116,7 @@ class IngestionService:
 
         logger.info(f"Saved upload: {upload_path}")
 
-        try:
-            document = self.document_loader.load(upload_path)
-        except ValueError as exc:
-            raise DocumentProcessingException(str(exc)) from exc
+        chunk_count = await asyncio.to_thread(self._process_file_sync, upload_path, file.filename)
+        logger.info(f"Indexed {chunk_count} chunks from {file.filename}")
+        return chunk_count
 
-        text = document.get("text", "")
-
-        if not text.strip():
-            raise DocumentProcessingException(
-                f"No extractable text found in {file.filename}."
-            )
-
-        chunks = self.chunking_service.recursive_chunk(text)
-
-        if not chunks:
-            raise DocumentProcessingException(
-                f"Chunking produced no chunks for {file.filename}."
-            )
-
-        embeddings = self.embedding_service.embed_documents(chunks)
-
-        metadata = [
-            {
-                "source_file": file.filename,
-                "chunk_index": index,
-            }
-            for index in range(len(chunks))
-        ]
-
-        self.vector_store.upsert(chunks, embeddings, metadata)
-
-        logger.info(f"Indexed {len(chunks)} chunks from {file.filename}")
-
-        return len(chunks)
